@@ -1,13 +1,19 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { Loader2, Trash2, Wand2, Circle } from "lucide-react";
+import { Loader2, Trash2, Wand2, Circle, Zap, Layers, Coins } from "lucide-react";
 import FormatStack3D from "@/components/FormatStack3D";
 import Dropzone from "@/components/Dropzone";
 import ResultPanel from "@/components/ResultPanel";
 import { API_BASE, convertFiles, type ConversionResult } from "@/lib/api";
 
 type Status = "idle" | "converting" | "done" | "error";
+
+const AI_CHIPS = [
+  { icon: Coins,  label: "3–6× fewer tokens than PDF/DOCX" },
+  { icon: Layers, label: "Less context consumed per message" },
+  { icon: Zap,    label: "Works with any AI — Claude, GPT, Gemini" },
+];
 
 export default function Home() {
   const [files, setFiles] = useState<File[]>([]);
@@ -19,15 +25,9 @@ export default function Home() {
   useEffect(() => {
     let cancelled = false;
     fetch(`${API_BASE}/api/health`)
-      .then((res) => {
-        if (!cancelled) setBackendUp(res.ok);
-      })
-      .catch(() => {
-        if (!cancelled) setBackendUp(false);
-      });
-    return () => {
-      cancelled = true;
-    };
+      .then((res) => { if (!cancelled) setBackendUp(res.ok); })
+      .catch(() => { if (!cancelled) setBackendUp(false); });
+    return () => { cancelled = true; };
   }, []);
 
   function addFiles(incoming: File[]) {
@@ -35,18 +35,15 @@ export default function Home() {
     setResults([]);
     setStatus("idle");
   }
-
   function removeFile(index: number) {
     setFiles((prev) => prev.filter((_, i) => i !== index));
   }
-
   function clearAll() {
     setFiles([]);
     setResults([]);
     setStatus("idle");
     setErrorMessage(null);
   }
-
   async function handleConvert() {
     if (files.length === 0) return;
     setStatus("converting");
@@ -62,11 +59,12 @@ export default function Home() {
   }
 
   return (
-    <main className="mx-auto flex max-w-5xl flex-col gap-16 px-4 pb-24 pt-10 sm:px-6 lg:px-8">
-      {/* Top bar */}
-      <header className="flex items-center justify-between">
+    <main className="h-screen flex flex-col px-4 pt-3 pb-3 sm:px-6 lg:px-8 max-w-5xl mx-auto overflow-hidden">
+
+      {/* ── Top bar ── */}
+      <header className="flex items-center justify-between mb-3 shrink-0">
         <div className="flex items-center gap-2">
-          <span className="flex h-8 w-8 items-center justify-center rounded-lg bg-cyan/10 font-display text-sm font-bold text-cyan">
+          <span className="flex h-7 w-7 items-center justify-center rounded-lg bg-cyan/10 font-display text-xs font-bold text-cyan">
             M↓
           </span>
           <span className="font-display text-sm font-medium tracking-wide text-ink2">
@@ -88,32 +86,44 @@ export default function Home() {
         </div>
       </header>
 
-      {/* Hero */}
-      <section className="flex flex-col gap-10 lg:flex-row lg:items-center">
-        <div className="flex flex-1 flex-col gap-5">
-          <span className="font-mono text-xs uppercase tracking-[0.2em] text-cyan/80">
+      {/* ── Hero + 3D stack (compact two-column) ── */}
+      <section className="flex items-center gap-6 mb-3 shrink-0">
+        <div className="flex flex-col gap-2 flex-1 min-w-0">
+          <span className="font-mono text-[10px] uppercase tracking-[0.2em] text-cyan/80">
             local · fastapi + markitdown
           </span>
-          <h1 className="font-display text-4xl font-bold leading-tight text-ink2 sm:text-5xl">
-            Every file format
-            <br />
-            becomes <span className="text-cyan">one format</span>.
+          <h1 className="font-display text-2xl font-bold leading-tight text-ink2 sm:text-3xl">
+            Every file format → <span className="text-cyan">one format</span>.
           </h1>
-          <p className="max-w-md font-body text-sm leading-relaxed text-muted sm:text-base">
-            Drop in PDFs, Word docs, spreadsheets, slide decks, images, audio or HTML — MarkItDown
-            converts each one to clean Markdown, right here on your machine. No CLI commands, no
-            cloud upload.
+          <p className="font-body text-xs leading-relaxed text-muted max-w-sm">
+            Drop PDFs, Word docs, spreadsheets or slides and get clean Markdown back — then send
+            that <code className="text-cyan/80">.md</code> to your AI instead of the raw file.
           </p>
+
+          {/* AI benefit chips */}
+          <div className="flex flex-wrap gap-2 mt-1">
+            {AI_CHIPS.map(({ icon: Icon, label }) => (
+              <span
+                key={label}
+                className="flex items-center gap-1.5 rounded-full border border-cyan/20 bg-cyan/5 px-2.5 py-1 font-mono text-[10px] text-cyan/90"
+              >
+                <Icon size={10} />
+                {label}
+              </span>
+            ))}
+          </div>
         </div>
-        <div className="flex-1">
+
+        {/* 3D stack — hidden on small screens to save vertical space */}
+        <div className="hidden sm:block w-44 shrink-0">
           <FormatStack3D />
         </div>
       </section>
 
-      {/* Converter */}
-      <section className="flex flex-col gap-4">
-        <div className="flex items-center justify-between">
-          <h2 className="font-display text-lg font-medium text-ink2">Convert files</h2>
+      {/* ── Converter (grows to fill remaining space) ── */}
+      <section className="flex flex-col gap-2 flex-1 min-h-0">
+        <div className="flex items-center justify-between shrink-0">
+          <h2 className="font-display text-sm font-medium text-ink2">Convert files</h2>
           {files.length > 0 && (
             <button
               type="button"
@@ -127,56 +137,62 @@ export default function Home() {
           )}
         </div>
 
-        <Dropzone files={files} onAdd={addFiles} onRemove={removeFile} disabled={status === "converting"} />
+        <Dropzone
+          files={files}
+          onAdd={addFiles}
+          onRemove={removeFile}
+          disabled={status === "converting"}
+          compact
+        />
 
         <button
           type="button"
           onClick={handleConvert}
           disabled={files.length === 0 || status === "converting"}
-          className="shadow-glow flex items-center justify-center gap-2 rounded-2xl bg-cyan px-5 py-3 font-display text-sm font-semibold text-ink transition-transform enabled:hover:scale-[1.01] disabled:cursor-not-allowed disabled:bg-surface2 disabled:text-muted disabled:shadow-none"
+          className="shadow-glow shrink-0 flex items-center justify-center gap-2 rounded-2xl bg-cyan px-5 py-2.5 font-display text-sm font-semibold text-ink transition-transform enabled:hover:scale-[1.01] disabled:cursor-not-allowed disabled:bg-surface2 disabled:text-muted disabled:shadow-none"
         >
           {status === "converting" ? (
             <>
-              <Loader2 size={16} className="animate-spin" />
+              <Loader2 size={14} className="animate-spin" />
               Converting {files.length} file{files.length === 1 ? "" : "s"}…
             </>
           ) : (
             <>
-              <Wand2 size={16} />
+              <Wand2 size={14} />
               Convert to Markdown
             </>
           )}
         </button>
 
         {backendUp === false && (
-          <p className="rounded-xl border border-rose-400/30 bg-rose-400/5 px-4 py-3 font-mono text-xs text-rose-300">
-            Can&apos;t reach the API at {API_BASE}. Start it with{" "}
-            <code className="text-rose-200">uvicorn main:app --reload --port 8000</code> from the
-            backend folder.
+          <p className="shrink-0 rounded-xl border border-rose-400/30 bg-rose-400/5 px-3 py-2 font-mono text-xs text-rose-300">
+            Can&apos;t reach the API at {API_BASE}. Run{" "}
+            <code className="text-rose-200">uvicorn main:app --reload --port 8000</code> in the backend folder.
           </p>
         )}
 
         {status === "error" && errorMessage && (
-          <p className="rounded-xl border border-rose-400/30 bg-rose-400/5 px-4 py-3 font-mono text-xs text-rose-300">
+          <p className="shrink-0 rounded-xl border border-rose-400/30 bg-rose-400/5 px-3 py-2 font-mono text-xs text-rose-300">
             {errorMessage}
           </p>
         )}
+
+        {/* Results — scrollable within their own box */}
+        {results.length > 0 && (
+          <div className="flex flex-col gap-2 flex-1 min-h-0 overflow-hidden">
+            <h2 className="shrink-0 font-display text-sm font-medium text-ink2">Output</h2>
+            <div className="grid gap-3 sm:grid-cols-2 overflow-y-auto thin-scroll flex-1 pr-1">
+              {results.map((result, i) => (
+                <ResultPanel key={`${result.filename}-${i}`} result={result} />
+              ))}
+            </div>
+          </div>
+        )}
       </section>
 
-      {/* Results */}
-      {results.length > 0 && (
-        <section className="flex flex-col gap-4">
-          <h2 className="font-display text-lg font-medium text-ink2">Output</h2>
-          <div className="grid gap-4 sm:grid-cols-2">
-            {results.map((result, i) => (
-              <ResultPanel key={`${result.filename}-${i}`} result={result} />
-            ))}
-          </div>
-        </section>
-      )}
-
-      <footer className="border-t border-line pt-6 font-mono text-[11px] text-muted">
-        Runs fully locally — files never leave this machine. Frontend on :3000, API on :8000.
+      {/* ── Footer ── */}
+      <footer className="shrink-0 border-t border-line pt-2 mt-2 font-mono text-[10px] text-muted">
+        Runs fully locally — files never leave this machine · frontend :3000 · api :8000
       </footer>
     </main>
   );
